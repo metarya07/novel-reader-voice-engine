@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package voiceservice;
+
+option java_package = "com.novelreader.voice.proto";
+option java_outer_classname = "VoiceServiceProto";
+option java_multiple_files = true;
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum Character {
+  SUBARU   = 0;
+  EMILIA   = 1;
+  REM      = 2;
+  BEATRICE = 3;
+  RAM      = 4;
+  ECHIDNA  = 5;
+}
+
+enum Emotion {
+  NEUTRAL     = 0;
+  RAGE        = 1;
+  GRIEF       = 2;
+  FEAR        = 3;
+  JOY         = 4;
+  SURPRISE    = 5;
+  GRATITUDE   = 6;
+  COLD_THREAT = 7;
+}
+
+// ─────────────────────────────────────────
+// CORE MESSAGES
+// ─────────────────────────────────────────
+
+message SynthesisRequest {
+  string    text            = 1;
+  string    context         = 2;  // 1-2 prior sentences for emotion context
+  Character character       = 3;
+  Emotion   emotion_hint    = 4;  // optional: override classifier
+  bool      use_classifier  = 5;  // true = auto-detect emotion
+  float     speed           = 6;  // 1.0 = normal
+  string    request_id      = 7;  // UUID for trace + cache
+}
+
+message SynthesisResponse {
+  bytes             audio_bytes      = 1;
+  string            request_id       = 2;
+  Emotion           detected_emotion = 3;
+  float             confidence       = 4;
+  int32             sample_rate      = 5;
+  int32             duration_ms      = 6;
+  SynthesisMetadata meta             = 7;
+  StageResults      stage_results    = 8;  // full exception trace
+}
+
+message SynthesisMetadata {
+  string model_used          = 1;
+  string index_used          = 2;
+  int32  rvc_pitch           = 3;
+  float  edge_tts_pitch_hz   = 4;
+  float  edge_tts_rate_pct   = 5;
+  float  gpu_vram_used_mb    = 6;
+  int32  total_inference_ms  = 7;
+  bool   served_from_cache   = 8;
+}
+
+// ─────────────────────────────────────────
+// EXCEPTION / RESULT TRACING
+// ─────────────────────────────────────────
+
+enum StageStatus {
+  STAGE_SUCCESS  = 0;
+  STAGE_DEGRADED = 1;  // fallback used, request still served
+  STAGE_FAILED   = 2;  // hard failure, propagated up
+}
+
+message StageResult {
+  string      stage_name    = 1;  // "classifier", "tts", "rvc", "gate"
+  StageStatus status        = 2;
+  string      fallback_type = 3;  // e.g. "neutral_emotion", "plain_tts"
+  string      error_code    = 4;  // e.g. "CUDA_OOM", "TIMEOUT"
+  string      error_msg     = 5;
+  int32       latency_ms    = 6;
+}
+
+message StageResults {
+  StageResult classifier = 1;
+  StageResult tts        = 2;
+  StageResult rvc        = 3;
+  StageResult gate       = 4;
+}
+
+// ─────────────────────────────────────────
+// STREAMING
+// ─────────────────────────────────────────
+
+message AudioChunk {
+  bytes  chunk_bytes  = 1;
+  string request_id   = 2;
+  int32  chunk_index  = 3;
+  bool   is_final     = 4;
+}
+
+// ─────────────────────────────────────────
+// BATCH (prefetch pipeline)
+// ─────────────────────────────────────────
+
+message BatchSynthesisRequest {
+  repeated SynthesisRequest requests        = 1;
+  bool                      prioritize_first = 2;
+}
+
+message BatchSynthesisResponse {
+  repeated SynthesisResponse responses = 1;
+}
+
+// ─────────────────────────────────────────
+// HEALTH CHECK
+// ─────────────────────────────────────────
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool             cuda_available   = 1;
+  string           gpu_name         = 2;
+  float            vram_total_gb    = 3;
+  float            vram_used_gb     = 4;
+  repeated string  loaded_models    = 5;
+  bool             classifier_ready = 6;
+  CircuitBreakers  circuit_breakers = 7;
+}
+
+message CircuitBreakers {
+  string rvc_state        = 1;  // "CLOSED", "OPEN", "HALF_OPEN"
+  string tts_state        = 2;
+  string classifier_state = 3;
+}
+
+// ─────────────────────────────────────────
+// SERVICE DEFINITION
+// ─────────────────────────────────────────
+
+service VoiceService {
+  // Single sentence → full WAV (standard)
+  rpc Synthesize       (SynthesisRequest)      returns (SynthesisResponse);
+
+  // Single sentence → chunked audio stream
+  rpc SynthesizeStream (SynthesisRequest)      returns (stream AudioChunk);
+
+  // Full paragraph → all sentences processed concurrently
+  rpc SynthesizeBatch  (BatchSynthesisRequest) returns (BatchSynthesisResponse);
+
+  // Health + GPU status + circuit breaker states
+  rpc Health           (HealthRequest)         returns (HealthResponse);
+}

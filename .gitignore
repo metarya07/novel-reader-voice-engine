@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Java
+target/
+*.class
+*.jar
+*.war
+.gradle/
+build/
+out/
+
+# Models (too large for git)
+models/subaru/*.pth
+models/subaru/*.index
+models/emilia/*.pth
+models/emilia/*.index
+models/emotion/classifier.pt
+models/emotion/tokenizer/
+
+# Audio samples (generated, not source)
+samples/
+*.wav
+*.mp3
+
+# Experiment ratings (local data)
+experiments/*/ratings_log.jsonl
+
+# Environment
+.env
+*.env.local
+secrets.json
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

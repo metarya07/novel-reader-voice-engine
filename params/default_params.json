@@ -1,0 +1,10 @@
+{
+  "neutral": {
+    "edge_pitch_hz":       0,
+    "edge_rate_pct":       0,
+    "rvc_pitch_semitones": 0,
+    "index_rate":          0.55,
+    "protect":             0.50,
+    "notes":               "Safe fallback — used when character has no params file"
+  }
+}

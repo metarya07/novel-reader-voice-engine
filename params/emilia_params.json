@@ -1,0 +1,66 @@
+{
+  "neutral": {
+    "edge_pitch_hz":       0,
+    "edge_rate_pct":       -2,
+    "rvc_pitch_semitones": 0,
+    "index_rate":          0.85,
+    "protect":             0.50,
+    "notes":               "Emilia baseline — Kayli Mills gentle natural delivery"
+  },
+  "rage": {
+    "edge_pitch_hz":       -3,
+    "edge_rate_pct":       12,
+    "rvc_pitch_semitones": 0,
+    "index_rate":          0.85,
+    "protect":             0.50,
+    "notes":               "Protective anger — Emilia rarely full rage, controlled"
+  },
+  "grief": {
+    "edge_pitch_hz":       -5,
+    "edge_rate_pct":       -20,
+    "rvc_pitch_semitones": -1,
+    "index_rate":          0.85,
+    "protect":             0.50,
+    "notes":               "Crying/heartbreak — softest, slowest, barely above whisper"
+  },
+  "fear": {
+    "edge_pitch_hz":       10,
+    "edge_rate_pct":       -10,
+    "rvc_pitch_semitones": 2,
+    "index_rate":          0.85,
+    "protect":             0.50,
+    "notes":               "Scared/trembling — pitch rises, delivery slows and shakes"
+  },
+  "joy": {
+    "edge_pitch_hz":       5,
+    "edge_rate_pct":       5,
+    "rvc_pitch_semitones": 1,
+    "index_rate":          0.82,
+    "protect":             0.50,
+    "notes":               "Warm happiness — bright, light, melodic"
+  },
+  "surprise": {
+    "edge_pitch_hz":       12,
+    "edge_rate_pct":       5,
+    "rvc_pitch_semitones": 2,
+    "index_rate":          0.85,
+    "protect":             0.50,
+    "notes":               "Shocked/flustered — sharp pitch peak"
+  },
+  "gratitude": {
+    "edge_pitch_hz":       3,
+    "edge_rate_pct":       -5,
+    "rvc_pitch_semitones": 0,
+    "index_rate":          0.83,
+    "protect":             0.50,
+    "notes":               "Heartfelt thanks — soft, warm, genuine"
+  },
+  "cold_threat": {
+    "edge_pitch_hz":       -8,
+    "edge_rate_pct":       -12,
+    "rvc_pitch_semitones": -1,
+    "index_rate":          0.85,
+    "protect":             0.50,
+    "notes":               "Rare for Emilia — quiet warning, still composed"
+  }
+}
