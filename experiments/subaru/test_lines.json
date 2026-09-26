@@ -1,0 +1,7 @@
+[
+  {"id": 1, "emotion": "rage",       "text": "I'll save you, I swear it! No matter how many times it takes!"},
+  {"id": 2, "emotion": "grief",      "text": "I'm sorry. I'm so sorry, Rem. I'm nothing. I'm worthless."},
+  {"id": 3, "emotion": "comedic",    "text": "Wait, seriously?! That actually worked?! Ha! I'm a genius!"},
+  {"id": 4, "emotion": "cold_threat","text": "Don't come near her. If you take one more step, I will end you."},
+  {"id": 5, "emotion": "gratitude",  "text": "Emilia... thank you. Just, thank you for believing in me."}
+]

@@ -1,66 +1,92 @@
 {
   "neutral": {
+    "voice":               "en-US-AndrewMultilingualNeural",
     "edge_pitch_hz":       0,
-    "edge_rate_pct":       2,
+    "edge_rate_pct":       0,
     "rvc_pitch_semitones": 2,
     "index_rate":          0.88,
+    "rms_mix_rate":        0.20,
     "protect":             0.50,
-    "notes":               "Subaru baseline — Sean Chiplock natural delivery"
+    "notes":               "Subaru baseline — Sean Chiplock natural chest resonance and vocal texture"
   },
   "rage": {
-    "edge_pitch_hz":       -5,
-    "edge_rate_pct":       20,
-    "rvc_pitch_semitones": 1,
-    "index_rate":          0.88,
-    "protect":             0.50,
-    "notes":               "Battle/determination — faster, lower pitched anger"
-  },
-  "grief": {
-    "edge_pitch_hz":       -8,
-    "edge_rate_pct":       -18,
-    "rvc_pitch_semitones": 0,
-    "index_rate":          0.88,
-    "protect":             0.50,
-    "notes":               "Breakdown/shame — slower, quieter, lower"
-  },
-  "fear": {
-    "edge_pitch_hz":       8,
-    "edge_rate_pct":       -10,
-    "rvc_pitch_semitones": 3,
-    "index_rate":          0.88,
-    "protect":             0.50,
-    "notes":               "Panic/terror — higher pitch, hesitant delivery"
-  },
-  "joy": {
-    "edge_pitch_hz":       5,
-    "edge_rate_pct":       15,
-    "rvc_pitch_semitones": 3,
-    "index_rate":          0.85,
-    "protect":             0.50,
-    "notes":               "Excited/happy — brighter, faster, energetic"
-  },
-  "surprise": {
-    "edge_pitch_hz":       10,
-    "edge_rate_pct":       8,
-    "rvc_pitch_semitones": 3,
-    "index_rate":          0.85,
-    "protect":             0.50,
-    "notes":               "Shock/disbelief — sudden pitch spike"
-  },
-  "gratitude": {
-    "edge_pitch_hz":       2,
-    "edge_rate_pct":       -8,
+    "voice":               "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":       0,
+    "edge_rate_pct":       10,
     "rvc_pitch_semitones": 2,
     "index_rate":          0.85,
+    "rms_mix_rate":        0.20,
     "protect":             0.50,
-    "notes":               "Warm/sincere — slightly slower, gentle delivery"
+    "notes":               "Battle/determination — energetic forward projection, faster rate"
+  },
+  "grief": {
+    "voice":               "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":       -3,
+    "edge_rate_pct":       -12,
+    "rvc_pitch_semitones": 1,
+    "index_rate":          0.85,
+    "rms_mix_rate":        0.20,
+    "protect":             0.50,
+    "notes":               "Breakdown/shame — quiet, vulnerable, lower register"
+  },
+  "fear": {
+    "voice":               "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":       5,
+    "edge_rate_pct":       -5,
+    "rvc_pitch_semitones": 3,
+    "index_rate":          0.85,
+    "rms_mix_rate":        0.20,
+    "protect":             0.50,
+    "notes":               "Panic/terror — elevated pitch, breathy tension"
+  },
+  "joy": {
+    "voice":               "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":       3,
+    "edge_rate_pct":       10,
+    "rvc_pitch_semitones": 3,
+    "index_rate":          0.82,
+    "rms_mix_rate":        0.20,
+    "protect":             0.50,
+    "notes":               "Excited/happy — brighter pitch, enthusiastic tempo"
+  },
+  "comedic": {
+    "voice":               "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":       3,
+    "edge_rate_pct":       15,
+    "rvc_pitch_semitones": 3,
+    "index_rate":          0.80,
+    "rms_mix_rate":        0.20,
+    "protect":             0.50,
+    "notes":               "Comedic banter/exaggerated — cheeky anime delivery, snappy tempo"
+  },
+  "surprise": {
+    "voice":               "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":       6,
+    "edge_rate_pct":       5,
+    "rvc_pitch_semitones": 3,
+    "index_rate":          0.82,
+    "rms_mix_rate":        0.20,
+    "protect":             0.50,
+    "notes":               "Shock/disbelief — sudden pitch inflection"
+  },
+  "gratitude": {
+    "voice":               "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":       1,
+    "edge_rate_pct":       -5,
+    "rvc_pitch_semitones": 2,
+    "index_rate":          0.85,
+    "rms_mix_rate":        0.20,
+    "protect":             0.50,
+    "notes":               "Warm/sincere — gentle, intimate, resonant"
   },
   "cold_threat": {
-    "edge_pitch_hz":       -10,
-    "edge_rate_pct":       -15,
-    "rvc_pitch_semitones": 0,
-    "index_rate":          0.88,
+    "voice":               "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":       -5,
+    "edge_rate_pct":       -10,
+    "rvc_pitch_semitones": 1,
+    "index_rate":          0.85,
+    "rms_mix_rate":        0.20,
     "protect":             0.50,
-    "notes":               "Deadly calm — lowest pitch, slowest rate, menacing"
+    "notes":               "Deadly calm — controlled, deep, menacing"
   }
 }

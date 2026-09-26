@@ -32,6 +32,8 @@ models/emotion/tokenizer/
 samples/
 *.wav
 *.mp3
+# Allow experiment output WAVs to be committed
+!experiments/*/output/*.wav
 
 # Experiment ratings (local data)
 experiments/*/ratings_log.jsonl
