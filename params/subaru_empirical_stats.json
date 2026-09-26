@@ -1,0 +1,32 @@
+{
+  "rage": {
+    "segment_count": 395,
+    "f0_mean_hz": 84.5,
+    "f0_std_hz": 25.0,
+    "rms_energy": 0.16892
+  },
+  "grief": {
+    "segment_count": 509,
+    "f0_mean_hz": 26.0,
+    "f0_std_hz": 7.9,
+    "rms_energy": 0.09382
+  },
+  "comedic": {
+    "segment_count": 412,
+    "f0_mean_hz": 64.9,
+    "f0_std_hz": 30.5,
+    "rms_energy": 0.12465
+  },
+  "cold_threat": {
+    "segment_count": 401,
+    "f0_mean_hz": 25.6,
+    "f0_std_hz": 5.9,
+    "rms_energy": 0.13089
+  },
+  "neutral": {
+    "segment_count": 2006,
+    "f0_mean_hz": 44.1,
+    "f0_std_hz": 14.4,
+    "rms_energy": 0.11829
+  }
+}

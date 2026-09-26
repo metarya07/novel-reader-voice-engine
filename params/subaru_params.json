@@ -7,17 +7,19 @@
     "index_rate":           0.88,
     "rms_mix_rate":         0.20,
     "protect":              0.50,
-    "notes": "Subaru baseline -- Sean Chiplock natural chest resonance and vocal texture"
+    "index_file":           "subaru_neutral_v2.index",
+    "notes": "Subaru baseline -- Sean Chiplock natural chest resonance and conversational delivery"
   },
   "rage": {
     "voice":                "en-US-AndrewMultilingualNeural",
     "edge_pitch_hz":        0,
     "edge_rate_pct":        18,
     "rvc_pitch_semitones":  3,
-    "index_rate":           0.85,
+    "index_rate":           0.88,
     "rms_mix_rate":         0.25,
     "protect":              0.33,
-    "notes": "Battle determination -- faster pace (+18%), rvc_pitch=3 (+1 semitone above baseline), protect=0.33 keeps breathy attack crisp"
+    "index_file":           "subaru_rage_v2.index",
+    "notes": "Battle determination / fury -- Queries 395 scream/yell dub clips exclusively for genuine vocal strain"
   },
   "grief": {
     "voice":                "en-US-AndrewMultilingualNeural",
@@ -27,17 +29,19 @@
     "index_rate":           0.88,
     "rms_mix_rate":         0.15,
     "protect":              0.50,
-    "notes": "Despair / breakdown -- slower (-16%), rvc_pitch=1 drops into vulnerable chest register, subtle -4Hz TTS droop"
+    "index_file":           "subaru_grief_v2.index",
+    "notes": "Despair / sobbing -- Queries 509 weeping/vulnerable dub clips exclusively for authentic breathy sorrow"
   },
   "comedic": {
     "voice":                "en-US-AndrewMultilingualNeural",
     "edge_pitch_hz":        4,
     "edge_rate_pct":        22,
     "rvc_pitch_semitones":  3,
-    "index_rate":           0.80,
+    "index_rate":           0.85,
     "rms_mix_rate":         0.20,
     "protect":              0.45,
-    "notes": "Anime banter -- energetic (+22%), rvc_pitch=3 for cracking excitable peaks, +4Hz TTS brightness"
+    "index_file":           "subaru_comedic_v2.index",
+    "notes": "Anime banter -- Queries 412 dynamic sarcastic clips exclusively for bouncing high inflections"
   },
   "cold_threat": {
     "voice":                "en-US-AndrewMultilingualNeural",
@@ -47,7 +51,8 @@
     "index_rate":           0.88,
     "rms_mix_rate":         0.15,
     "protect":              0.50,
-    "notes": "Deadly calm -- measured pace (-12%), rvc_pitch=0 brings Sean Chiplock into his darkest cold register"
+    "index_file":           "subaru_cold_threat_v2.index",
+    "notes": "Deadly calm -- Queries 401 flat monotone baritone clips exclusively for menacing control"
   },
   "gratitude": {
     "voice":                "en-US-AndrewMultilingualNeural",
@@ -57,7 +62,8 @@
     "index_rate":           0.88,
     "rms_mix_rate":         0.18,
     "protect":              0.50,
-    "notes": "Earnest / sincere -- slightly slower (-8%) allowing emotional weight to breathe at baseline pitch=2"
+    "index_file":           "subaru_neutral_v2.index",
+    "notes": "Earnest / sincere -- Gentle pacing allowing emotional resonance to breathe"
   },
   "fear": {
     "voice":                "en-US-AndrewMultilingualNeural",
@@ -67,7 +73,8 @@
     "index_rate":           0.85,
     "rms_mix_rate":         0.20,
     "protect":              0.45,
-    "notes": "Panic / dread -- elevated rvc_pitch=3 with tense hesitant pacing"
+    "index_file":           "subaru_grief_v2.index",
+    "notes": "Panic / dread -- Elevated pitch with vulnerable trembling vectors"
   },
   "surprise": {
     "voice":                "en-US-AndrewMultilingualNeural",
@@ -77,6 +84,7 @@
     "index_rate":           0.82,
     "rms_mix_rate":         0.20,
     "protect":              0.45,
-    "notes": "Shock -- snappy pacing (+15%) and pitch=3 jump"
+    "index_file":           "subaru_comedic_v2.index",
+    "notes": "Shock -- Snappy pacing and dynamic pitch inflection vectors"
   }
 }

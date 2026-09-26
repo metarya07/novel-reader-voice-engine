@@ -98,7 +98,7 @@ async def generate_tts(text: str, pitch_hz: int, rate_pct: int, voice: str = BAS
 
 def run_rvc_inference(raw_audio_bytes: bytes, pitch_semitones: int,
                       index_rate: float, rms_mix_rate: float = 0.20,
-                      protect: float = 0.50) -> bytes:
+                      protect: float = 0.50, index_path: str = None) -> bytes:
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as fin, \
          tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as fout:
         in_path = fin.name
@@ -121,8 +121,10 @@ def run_rvc_inference(raw_audio_bytes: bytes, pitch_semitones: int,
             "--protect",      str(protect),
             "--overwrite"
         ]
-        if os.path.exists(SUBARU_INDEX):
-            cmd.extend(["--index", SUBARU_INDEX])
+        target_index = index_path if (index_path and os.path.exists(index_path)) else SUBARU_INDEX
+        if os.path.exists(target_index):
+            cmd.extend(["--index", target_index])
+            print(f"     [RVC] using index: {os.path.basename(target_index)}")
 
         print(f"     [RVC] pitch={pitch_semitones:+d}st index_rate={index_rate} rms_mix={rms_mix_rate} protect={protect}")
         res = subprocess.run(
@@ -216,13 +218,19 @@ def process_and_save(text: str, cfg: dict, label: str, out_path: str):
         voice=cfg.get("voice", BASE_VOICE)
     ))
 
-    # 2. RVC
+    # 2. RVC with Emotion-Dedicated Index
+    idx_file = cfg.get("index_file", "")
+    idx_path = os.path.join(r"a:\Projects\novel-reader-voice-engine\models\subaru\indices", idx_file)
+    if not os.path.exists(idx_path):
+        idx_path = SUBARU_INDEX
+
     rvc_out = run_rvc_inference(
         raw_audio_bytes=raw_tts,
         pitch_semitones=cfg["rvc_pitch_semitones"],
         index_rate=cfg["index_rate"],
         rms_mix_rate=cfg.get("rms_mix_rate", 0.20),
-        protect=cfg.get("protect", 0.50)
+        protect=cfg.get("protect", 0.50),
+        index_path=idx_path
     )
 
     # 3. Silence Gate
