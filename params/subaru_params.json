@@ -7,92 +7,76 @@
     "index_rate":           0.88,
     "rms_mix_rate":         0.20,
     "protect":              0.50,
-    "post_pitch_semitones": 0,
-    "post_time_stretch":    1.0,
-    "notes": "Subaru baseline -- Sean Chiplock natural chest resonance"
+    "notes": "Subaru baseline -- Sean Chiplock natural chest resonance and vocal texture"
   },
   "rage": {
-    "voice":                "en-US-RogerNeural",
+    "voice":                "en-US-AndrewMultilingualNeural",
     "edge_pitch_hz":        0,
-    "edge_rate_pct":        45,
+    "edge_rate_pct":        18,
     "rvc_pitch_semitones":  3,
-    "index_rate":           0.88,
-    "rms_mix_rate":         0.35,
+    "index_rate":           0.85,
+    "rms_mix_rate":         0.25,
     "protect":              0.33,
-    "post_pitch_semitones": 1,
-    "post_time_stretch":    1.0,
-    "notes": "Battle cry -- RogerNeural punchy energy, blazing fast rate, +1 semitone post adds raw intensity"
+    "notes": "Battle determination -- faster pace (+18%), rvc_pitch=3 (+1 semitone above baseline), protect=0.33 keeps breathy attack crisp"
   },
   "grief": {
-    "voice":                "en-US-BrianNeural",
-    "edge_pitch_hz":        -12,
-    "edge_rate_pct":        -40,
-    "rvc_pitch_semitones":  0,
+    "voice":                "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":        -4,
+    "edge_rate_pct":        -16,
+    "rvc_pitch_semitones":  1,
     "index_rate":           0.88,
     "rms_mix_rate":         0.15,
     "protect":              0.50,
-    "post_pitch_semitones": -1,
-    "post_time_stretch":    0.90,
-    "notes": "Shame/breakdown -- BrianNeural deep warmth, extreme slowdown, post time-stretch 0.90 adds heaviness"
+    "notes": "Despair / breakdown -- slower (-16%), rvc_pitch=1 drops into vulnerable chest register, subtle -4Hz TTS droop"
   },
   "comedic": {
-    "voice":                "en-US-ChristopherNeural",
-    "edge_pitch_hz":        5,
-    "edge_rate_pct":        55,
+    "voice":                "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":        4,
+    "edge_rate_pct":        22,
     "rvc_pitch_semitones":  3,
     "index_rate":           0.80,
     "rms_mix_rate":         0.20,
-    "protect":              0.40,
-    "post_pitch_semitones": 2,
-    "post_time_stretch":    1.0,
-    "notes": "Anime banter -- Christopher animated delivery, max rate, +2 post semitones for cracking excitement"
+    "protect":              0.45,
+    "notes": "Anime banter -- energetic (+22%), rvc_pitch=3 for cracking excitable peaks, +4Hz TTS brightness"
   },
   "cold_threat": {
-    "voice":                "en-US-GuyNeural",
-    "edge_pitch_hz":        -15,
-    "edge_rate_pct":        -38,
+    "voice":                "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":        -6,
+    "edge_rate_pct":        -12,
     "rvc_pitch_semitones":  0,
     "index_rate":           0.88,
     "rms_mix_rate":         0.15,
     "protect":              0.50,
-    "post_pitch_semitones": -2,
-    "post_time_stretch":    0.93,
-    "notes": "Deadly calm -- GuyNeural measured seriousness, -2 semitones post = darkest register"
+    "notes": "Deadly calm -- measured pace (-12%), rvc_pitch=0 brings Sean Chiplock into his darkest cold register"
   },
   "gratitude": {
     "voice":                "en-US-AndrewMultilingualNeural",
-    "edge_pitch_hz":        3,
-    "edge_rate_pct":        -15,
+    "edge_pitch_hz":        1,
+    "edge_rate_pct":        -8,
     "rvc_pitch_semitones":  2,
-    "index_rate":           0.85,
+    "index_rate":           0.88,
     "rms_mix_rate":         0.18,
     "protect":              0.50,
-    "post_pitch_semitones": 0,
-    "post_time_stretch":    1.0,
-    "notes": "Sincere warmth -- Andrew natural warmth, gentle slowdown lets weight breathe"
+    "notes": "Earnest / sincere -- slightly slower (-8%) allowing emotional weight to breathe at baseline pitch=2"
   },
   "fear": {
-    "voice":                "en-US-EricNeural",
-    "edge_pitch_hz":        8,
-    "edge_rate_pct":        -8,
+    "voice":                "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":        6,
+    "edge_rate_pct":        -5,
     "rvc_pitch_semitones":  3,
     "index_rate":           0.85,
     "rms_mix_rate":         0.20,
-    "protect":              0.50,
-    "post_pitch_semitones": 1,
-    "post_time_stretch":    1.0,
-    "notes": "Panic/dread -- elevated pitch, slight slowdown for trembling hesitation"
+    "protect":              0.45,
+    "notes": "Panic / dread -- elevated rvc_pitch=3 with tense hesitant pacing"
   },
   "surprise": {
-    "voice":                "en-US-RogerNeural",
-    "edge_pitch_hz":        8,
-    "edge_rate_pct":        20,
+    "voice":                "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":        6,
+    "edge_rate_pct":        15,
     "rvc_pitch_semitones":  3,
     "index_rate":           0.82,
     "rms_mix_rate":         0.20,
     "protect":              0.45,
-    "post_pitch_semitones": 1,
-    "post_time_stretch":    1.0,
-    "notes": "Shock/disbelief -- Roger energy, sharp pitch spike"
+    "notes": "Shock -- snappy pacing (+15%) and pitch=3 jump"
   }
 }
