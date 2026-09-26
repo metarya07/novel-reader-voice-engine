@@ -1,8 +1,26 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-Phase 1: Subaru Natsuki Voice Experiment Pipeline
-Generates 10 WAV files: 5 emotions x (FLAT version + EMOTION version).
-Voice Base: en-US-AndrewMultilingualNeural, rms_mix_rate=0.20, Analog Warmth Saturation.
+Phase 1 -- Subaru Natsuki Emotion Experiment (v2 -- Best Accuracy)
+=================================================================
+Three-tier expressiveness strategy:
+
+  Tier 1: Per-emotion Edge TTS voice selection
+          (DavisNeural=rage, TonyNeural=grief, ChristopherNeural=comedic,
+           GuyNeural=cold_threat, AndrewMultilingual=gratitude/neutral)
+
+  Tier 2: Nuclear Edge TTS params
+          (rate up to +55%, pitch down to -15Hz -- far beyond previous timid values)
+
+  Tier 3: Post-RVC pitch envelope + time-stretch
+          (operates on OUTPUT waveform, bypasses HuBERT washout entirely)
+
+Pipeline per WAV:
+  Edge TTS (voice + pitch + rate)
+    -> RVC v2 (rmvpe, dynamic semitone, FAISS IVF256)
+    -> Silence Gate (sigmoid, input-guided)
+    -> Post-Process (pitch shift + time stretch on RVC output)
+    -> Analog Warmth Saturation
+    -> WAV file
 """
 
 import os
@@ -21,278 +39,332 @@ from scipy.ndimage import gaussian_filter1d
 import torch
 import edge_tts
 
-# Absolute Paths
-PYTHON_VENV = r"a:\Projects\novel reader\voice-server\.venv\Scripts\python.exe"
-RVC_ENGINE_DIR = r"a:\Projects\novel reader\rvc-engine"
-SUBARU_MODEL_PATH = r"a:\Projects\novel reader\voice-server\models\subaru\subaru_e50_s22500.pth"
-SUBARU_INDEX_PATH = r"a:\Projects\novel reader\voice-server\models\subaru\subaru_added_IVF256_Flat_nprobe_1_subaru_v2.index"
-OUTPUT_DIR = r"a:\Projects\novel-reader-voice-engine\experiments\subaru\output"
-PARAMS_FILE = r"a:\Projects\novel-reader-voice-engine\params\subaru_params.json"
+# ─────────────────────────────────────────────────────────────
+# PATHS
+# ─────────────────────────────────────────────────────────────
+
+PYTHON_VENV      = r"a:\Projects\novel reader\voice-server\.venv\Scripts\python.exe"
+RVC_ENGINE_DIR   = r"a:\Projects\novel reader\rvc-engine"
+SUBARU_MODEL     = r"a:\Projects\novel reader\voice-server\models\subaru\subaru_e50_s22500.pth"
+SUBARU_INDEX     = r"a:\Projects\novel reader\voice-server\models\subaru\subaru_added_IVF256_Flat_nprobe_1_subaru_v2.index"
+PARAMS_FILE      = r"a:\Projects\novel-reader-voice-engine\params\subaru_params.json"
+OUTPUT_DIR       = r"a:\Projects\novel-reader-voice-engine\experiments\subaru\output"
+ARTIFACT_DIR     = r"C:\Users\metar\.gemini\antigravity\brain\d4a04e3c-caff-41c4-ab27-b0cb43df6115"
 
 TEST_LINES = [
-    ("rage", "I'll save you, I swear it! No matter how many times it takes!"),
-    ("grief", "I'm sorry. I'm so sorry, Rem. I'm nothing. I'm worthless."),
-    ("comedic", "Wait — seriously?! That actually worked?! Ha! I'm a genius!"),
-    ("cold_threat", "Don't come near her. If you take one more step, I will end you."),
-    ("gratitude", "Emilia… thank you. Just — thank you for believing in me."),
+    (1, "rage",        "I'll save you, I swear it! No matter how many times it takes!"),
+    (2, "grief",       "I'm sorry. I'm so sorry, Rem. I'm nothing. I'm worthless."),
+    (3, "comedic",     "Wait, seriously?! That actually worked?! Ha! I'm a genius!"),
+    (4, "cold_threat", "Don't come near her. If you take one more step, I will end you."),
+    (5, "gratitude",   "Emilia... thank you. Just, thank you for believing in me."),
 ]
 
-BASE_VOICE = "en-US-AndrewMultilingualNeural"
+NEUTRAL_PARAMS = {
+    "voice":               "en-US-AndrewMultilingualNeural",
+    "edge_pitch_hz":       0,
+    "edge_rate_pct":       0,
+    "rvc_pitch_semitones": 2,
+    "index_rate":          0.88,
+    "rms_mix_rate":        0.20,
+    "protect":             0.50,
+    "post_pitch_semitones": 0,
+    "post_time_stretch":   1.0,
+}
+
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
-def apply_silence_gate(source_bytes, converted_bytes):
-    from scipy.ndimage import gaussian_filter1d
-    import soundfile as sf, numpy as np, io
-    y_src, sr_src = sf.read(io.BytesIO(source_bytes), dtype="float32")
-    y_conv, sr_conv = sf.read(io.BytesIO(converted_bytes), dtype="float32")
-    if y_src.ndim > 1: y_src = np.mean(y_src, axis=1)
-    if y_conv.ndim > 1: y_conv = np.mean(y_conv, axis=1)
-    min_len = min(len(y_src), len(y_conv))
-    y_src_s = y_src[:min_len]; y_conv_s = y_conv[:min_len]
-    win = int(0.025 * sr_conv); hop = int(0.010 * sr_conv)
-    rms = np.zeros(min_len, dtype=np.float32)
-    for i in range(0, min_len - win, hop):
-        rms[i:i+hop] = np.sqrt(np.mean(y_src_s[i:i+win]**2))
-    rms_s = gaussian_filter1d(rms, sigma=int(0.025 * sr_conv / hop))
-    gate = 1.0 / (1.0 + np.exp(-(rms_s - 0.0015) / 0.0003))
-    out = io.BytesIO()
-    sf.write(out, y_conv_s * gate, sr_conv, format="WAV")
-    return out.getvalue()
+# ─────────────────────────────────────────────────────────────
+# TIER 1 + 2 -- Edge TTS with voice + nuclear params
+# ─────────────────────────────────────────────────────────────
+
+async def _tts_attempt(text: str, voice: str, pitch_str: str, rate_str: str) -> bytes:
+    comm = edge_tts.Communicate(text=text, voice=voice, pitch=pitch_str, rate=rate_str)
+    buf  = io.BytesIO()
+    async for chunk in comm.stream():
+        if chunk["type"] == "audio":
+            buf.write(chunk["data"])
+    data = buf.getvalue()
+    if len(data) < 200:
+        raise RuntimeError("Edge TTS returned empty payload")
+    return data
 
 
-async def generate_tts(text: str, pitch_str: str, rate_str: str, voice: str = BASE_VOICE) -> bytes:
-    """Generate raw audio stream via edge-tts with retry on transient network errors."""
-    import time
-    max_attempts = 5
-    for attempt in range(1, max_attempts + 1):
+async def generate_tts(text: str, voice: str, pitch_hz: int, rate_pct: int) -> bytes:
+    pitch_str = f"{pitch_hz:+d}Hz"
+    rate_str  = f"{rate_pct:+d}%"
+    print(f"     [TTS] voice={voice}  pitch={pitch_str}  rate={rate_str}")
+    for attempt in range(1, 6):
         try:
-            comm = edge_tts.Communicate(text=text, voice=voice, pitch=pitch_str, rate=rate_str)
-            raw_stream = io.BytesIO()
-            async for chunk in comm.stream():
-                if chunk["type"] == "audio":
-                    raw_stream.write(chunk["data"])
-            data = raw_stream.getvalue()
-            if len(data) < 100:
-                raise RuntimeError("Edge TTS returned empty/tiny audio payload")
-            return data
+            return await _tts_attempt(text, voice, pitch_str, rate_str)
         except Exception as exc:
-            wait = 2 ** attempt  # 2, 4, 8, 16, 32 seconds
-            if attempt < max_attempts:
-                print(f"     [TTS] Attempt {attempt} failed ({type(exc).__name__}), retrying in {wait}s...")
+            wait = 2 ** attempt
+            if attempt < 5:
+                print(f"     [TTS] attempt {attempt} failed ({type(exc).__name__}), retry in {wait}s...")
                 await asyncio.sleep(wait)
             else:
-                raise RuntimeError(f"Edge TTS failed after {max_attempts} attempts: {exc}") from exc
+                raise RuntimeError(f"Edge TTS failed after 5 attempts: {exc}") from exc
 
 
-def run_rvc_inference(
-    raw_audio_bytes: bytes,
-    pitch_semitones: int,
-    index_rate: float,
-    rms_mix_rate: float = 0.20,
-    protect: float = 0.50
-) -> bytes:
-    """Run RVC v2 inference CLI via subprocess."""
+# ─────────────────────────────────────────────────────────────
+# RVC v2 INFERENCE
+# ─────────────────────────────────────────────────────────────
+
+def run_rvc(raw_bytes: bytes, pitch: int, index_rate: float,
+            rms_mix: float, protect: float) -> bytes:
+    """RVC v2 subprocess call -- rmvpe F0, FAISS IVF256 index."""
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as fin, \
          tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as fout:
-        in_path = fin.name
+        in_path  = fin.name
         out_path = fout.name
-        fin.write(raw_audio_bytes)
+        fin.write(raw_bytes)
 
     try:
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
-        py_exec = PYTHON_VENV if os.path.exists(PYTHON_VENV) else sys.executable
+        py  = PYTHON_VENV if os.path.exists(PYTHON_VENV) else sys.executable
         cmd = [
-            py_exec, "-m", "infer.cli",
-            "--model", SUBARU_MODEL_PATH,
-            "--input", in_path,
-            "--output", out_path,
-            "--f0-method", "rmvpe",
-            "--pitch", str(pitch_semitones),
-            "--index-rate", str(index_rate),
-            "--rms-mix-rate", str(rms_mix_rate),
-            "--protect", str(protect),
-            "--overwrite"
+            py, "-m", "infer.cli",
+            "--model",       SUBARU_MODEL,
+            "--input",       in_path,
+            "--output",      out_path,
+            "--f0-method",   "rmvpe",
+            "--pitch",       str(pitch),
+            "--index-rate",  str(index_rate),
+            "--rms-mix-rate", str(rms_mix),
+            "--protect",     str(protect),
+            "--overwrite",
         ]
-        if os.path.exists(SUBARU_INDEX_PATH):
-            cmd.extend(["--index", SUBARU_INDEX_PATH])
+        if os.path.exists(SUBARU_INDEX):
+            cmd.extend(["--index", SUBARU_INDEX])
 
-        res = subprocess.run(
-            cmd,
-            cwd=RVC_ENGINE_DIR,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="ignore",
-            env=env
-        )
-        if res.returncode != 0:
-            err = res.stderr.strip() or res.stdout.strip()
-            raise RuntimeError(f"RVC inference failed (code {res.returncode}): {err}")
+        print(f"     [RVC] pitch={pitch:+d}st  index_rate={index_rate}  rms_mix={rms_mix}")
+        res = subprocess.run(cmd, cwd=RVC_ENGINE_DIR,
+                             capture_output=True, text=True,
+                             encoding="utf-8", errors="ignore", env=env)
 
-        if not os.path.exists(out_path) or os.path.getsize(out_path) < 100:
-            raise RuntimeError(f"RVC output file empty or missing: {out_path}")
+        if res.returncode != 0 or not os.path.exists(out_path) or os.path.getsize(out_path) < 500:
+            err = (res.stderr or res.stdout or "").strip()[:200]
+            raise RuntimeError(f"RVC failed (code {res.returncode}): {err}")
 
         with open(out_path, "rb") as f:
             return f.read()
     finally:
         for p in [in_path, out_path]:
-            if os.path.exists(p):
-                try:
-                    os.remove(p)
-                except Exception:
-                    pass
+            try: os.remove(p)
+            except Exception: pass
 
 
-def prepare_source_for_gate(source_bytes: bytes, target_sr: int) -> bytes:
-    """Resample TTS source bytes to match converted sample rate so silence gate operates at 1:1 timeline."""
-    y, sr = sf.read(io.BytesIO(source_bytes), dtype="float32")
-    if y.ndim > 1:
-        y = np.mean(y, axis=1)
-    if sr != target_sr:
-        y = librosa.resample(y, orig_sr=sr, target_sr=target_sr)
+# ─────────────────────────────────────────────────────────────
+# SILENCE GATE
+# ─────────────────────────────────────────────────────────────
+
+def apply_silence_gate(tts_bytes: bytes, rvc_bytes: bytes) -> bytes:
+    """
+    Input-guided sigmoid gate.
+    Source TTS energy controls muting of RVC output during silent frames.
+    Prevents vocoder 226 Hz drone in pauses.
+    """
+    y_src,  sr_src  = sf.read(io.BytesIO(tts_bytes), dtype="float32")
+    y_conv, sr_conv = sf.read(io.BytesIO(rvc_bytes),  dtype="float32")
+
+    if y_src.ndim  > 1: y_src  = np.mean(y_src,  axis=1)
+    if y_conv.ndim > 1: y_conv = np.mean(y_conv, axis=1)
+
+    if sr_src != sr_conv:
+        y_src = librosa.resample(y_src, orig_sr=sr_src, target_sr=sr_conv)
+
+    n        = min(len(y_src), len(y_conv))
+    y_src    = y_src[:n]
+    y_conv   = y_conv[:n]
+
+    win      = int(0.025 * sr_conv)
+    hop      = int(0.010 * sr_conv)
+    rms      = np.zeros(n, dtype=np.float32)
+    for i in range(0, n - win, hop):
+        rms[i:i + hop] = np.sqrt(np.mean(y_src[i:i + win] ** 2))
+
+    sigma    = max(1, int(0.025 * sr_conv / hop))
+    rms_s    = gaussian_filter1d(rms, sigma=sigma)
+    gate     = 1.0 / (1.0 + np.exp(-(rms_s - 0.0015) / 0.0003))
+
     out = io.BytesIO()
-    sf.write(out, y, target_sr, format="WAV")
+    sf.write(out, y_conv * gate, sr_conv, format="WAV")
     return out.getvalue()
 
 
-def apply_warmth_saturation(audio_bytes: bytes) -> bytes:
-    """Apply gentle analog warmth saturation on audio to enhance low-mid chest resonance and body."""
-    audio_data, sr = sf.read(io.BytesIO(audio_bytes), dtype="float32")
-    if audio_data.ndim > 1:
-        audio_data = np.mean(audio_data, axis=1)
+# ─────────────────────────────────────────────────────────────
+# TIER 3 -- Post-RVC Pitch + Time-Stretch Envelope
+# ─────────────────────────────────────────────────────────────
 
-    tensor = torch.from_numpy(audio_data)
-    max_val = torch.max(torch.abs(tensor))
-    if max_val > 0.001:
-        tensor = tensor / max_val * 0.95
-    tensor = torch.tanh(tensor * 1.08) / 1.03
+def apply_post_rvc(audio_bytes: bytes,
+                   pitch_semitones: int,
+                   time_stretch: float) -> bytes:
+    """
+    Apply pitch shift and time-stretch to the RVC OUTPUT waveform.
+    Bypasses HuBERT tokenization -- operates directly on the reconstructed signal.
+    
+    pitch_semitones: positive = higher, negative = lower
+    time_stretch:    <1.0 = slower (grief), >1.0 = faster (not used here)
+    """
+    if pitch_semitones == 0 and abs(time_stretch - 1.0) < 0.01:
+        return audio_bytes  # nothing to do
 
-    out_buf = io.BytesIO()
-    sf.write(out_buf, tensor.numpy(), sr, format="WAV")
-    return out_buf.getvalue()
+    y, sr = sf.read(io.BytesIO(audio_bytes), dtype="float32")
+    if y.ndim > 1:
+        y = np.mean(y, axis=1)
+
+    # Time-stretch first (affects duration, not pitch)
+    if abs(time_stretch - 1.0) >= 0.01:
+        print(f"     [POST] time_stretch={time_stretch:.2f}")
+        y = librosa.effects.time_stretch(y, rate=time_stretch)
+
+    # Then pitch shift (affects pitch, not duration)
+    if pitch_semitones != 0:
+        print(f"     [POST] pitch_shift={pitch_semitones:+d} semitones")
+        y = librosa.effects.pitch_shift(y, sr=sr, n_steps=pitch_semitones)
+
+    # Re-normalize to 0.92 peak after processing
+    peak = np.max(np.abs(y))
+    if peak > 0.001:
+        y = y / peak * 0.92
+
+    out = io.BytesIO()
+    sf.write(out, y, sr, format="WAV")
+    return out.getvalue()
 
 
-def process_sentence(
-    text: str,
-    pitch_str: str,
-    rate_str: str,
-    rvc_pitch: int,
-    index_rate: float,
-    rms_mix_rate: float = 0.20,
-    protect: float = 0.50,
-    voice: str = BASE_VOICE
-) -> bytes:
-    """Full pipeline: edge_tts -> RVC inference -> silence gate -> warmth saturation."""
-    # 1. Edge TTS
-    raw_tts_bytes = asyncio.run(generate_tts(text, pitch_str, rate_str, voice=voice))
+# ─────────────────────────────────────────────────────────────
+# ANALOG WARMTH SATURATION
+# ─────────────────────────────────────────────────────────────
 
-    # 2. RVC Inference
-    rvc_output_bytes = run_rvc_inference(
-        raw_audio_bytes=raw_tts_bytes,
-        pitch_semitones=rvc_pitch,
-        index_rate=index_rate,
-        rms_mix_rate=rms_mix_rate,
-        protect=protect
+def apply_warmth(audio_bytes: bytes) -> bytes:
+    """
+    Soft-clip tanh saturation -- adds chest resonance body.
+    Mimics tape/tube warmth: slightly boosts low-mids, gentle harmonic distortion.
+    """
+    y, sr = sf.read(io.BytesIO(audio_bytes), dtype="float32")
+    if y.ndim > 1:
+        y = np.mean(y, axis=1)
+
+    peak = np.max(np.abs(y))
+    if peak > 0.001:
+        y = y / peak * 0.95
+
+    # Drive -> tanh -> normalize: adds harmonic richness without clipping
+    y = np.tanh(y * 1.10) / 1.05
+
+    out = io.BytesIO()
+    sf.write(out, y, sr, format="WAV")
+    return out.getvalue()
+
+
+# ─────────────────────────────────────────────────────────────
+# FULL PIPELINE
+# ─────────────────────────────────────────────────────────────
+
+def run_pipeline(text: str, p: dict, label: str, out_path: str) -> None:
+    """
+    Execute full 5-stage pipeline for one WAV.
+    Skips if output already exists and is valid (resume support).
+    """
+    if os.path.exists(out_path) and os.path.getsize(out_path) > 1000:
+        print(f"  [OK] {label:10s} already exists -- skipping")
+        return
+
+    print(f"  -> {label:10s} generating...")
+
+    # Stage 1: TTS
+    tts_bytes = asyncio.run(generate_tts(
+        text     = text,
+        voice    = p["voice"],
+        pitch_hz = p["edge_pitch_hz"],
+        rate_pct = p["edge_rate_pct"],
+    ))
+
+    # Stage 2: RVC
+    rvc_bytes = run_rvc(
+        raw_bytes  = tts_bytes,
+        pitch      = p["rvc_pitch_semitones"],
+        index_rate = p["index_rate"],
+        rms_mix    = p["rms_mix_rate"],
+        protect    = p["protect"],
     )
 
-    # 3. Silence Gate
-    _, conv_sr = sf.read(io.BytesIO(rvc_output_bytes))
-    source_aligned = prepare_source_for_gate(raw_tts_bytes, conv_sr)
-    gated_wav_bytes = apply_silence_gate(source_aligned, rvc_output_bytes)
+    # Stage 3: Silence Gate
+    gated_bytes = apply_silence_gate(tts_bytes, rvc_bytes)
 
-    # 4. Analog Warmth Saturation
-    final_wav_bytes = apply_warmth_saturation(gated_wav_bytes)
-    return final_wav_bytes
+    # Stage 4: Post-RVC pitch + time-stretch (Tier 3)
+    post_bytes = apply_post_rvc(
+        audio_bytes     = gated_bytes,
+        pitch_semitones = p.get("post_pitch_semitones", 0),
+        time_stretch    = p.get("post_time_stretch",    1.0),
+    )
 
+    # Stage 5: Analog warmth
+    final_bytes = apply_warmth(post_bytes)
+
+    with open(out_path, "wb") as f:
+        f.write(final_bytes)
+
+    size_kb = len(final_bytes) // 1024
+    print(f"  [OK] {label:10s} -> {os.path.basename(out_path)}  ({size_kb} KB)")
+
+
+# ─────────────────────────────────────────────────────────────
+# MAIN
+# ─────────────────────────────────────────────────────────────
 
 def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(PARAMS_FILE, encoding="utf-8") as f:
+        ALL_PARAMS = json.load(f)
 
-    with open(PARAMS_FILE, "r", encoding="utf-8") as f:
-        params = json.load(f)
+    print("=" * 68)
+    print("  SUBARU EMOTION EXPERIMENT -- Phase 1 v2 (Best Accuracy)")
+    print("  Tier 1: Per-emotion voice  |  Tier 2: Nuclear params")
+    print("  Tier 3: Post-RVC pitch envelope + time-stretch")
+    print("=" * 68)
 
-    generated_files = []
+    generated = []
 
-    print("================================================================================")
-    print("Subaru Voice Experiment — Character-Depth Tuning (Sample 5 Profile)")
-    print(f"Base Voice: {BASE_VOICE} | RMS Mix: 0.20 | Analog Saturation: Active")
-    print("================================================================================")
+    for idx, emotion, text in TEST_LINES:
+        flat_path  = os.path.join(OUTPUT_DIR, f"subaru_exp_{idx:02d}_{emotion}_FLAT.wav")
+        emo_path   = os.path.join(OUTPUT_DIR, f"subaru_exp_{idx:02d}_{emotion}_EMOTION.wav")
+        emo_params = ALL_PARAMS.get(emotion, ALL_PARAMS["neutral"])
 
-    for i, (emotion, text) in enumerate(TEST_LINES, start=1):
-        idx_str = f"{i:02d}"
-        flat_filename = f"subaru_exp_{idx_str}_{emotion}_FLAT.wav"
-        emotion_filename = f"subaru_exp_{idx_str}_{emotion}_EMOTION.wav"
+        print(f"\n[{idx}/5] {emotion.upper()}")
+        print(f'  "{text}"')
 
-        flat_path = os.path.join(OUTPUT_DIR, flat_filename)
-        emotion_path = os.path.join(OUTPUT_DIR, emotion_filename)
+        run_pipeline(text, NEUTRAL_PARAMS, "FLAT",    flat_path)
+        run_pipeline(text, emo_params,     "EMOTION", emo_path)
 
-        print(f"\n[{idx_str}/05] Emotion: {emotion.upper()}")
-        print(f"      Text: \"{text}\"")
+        generated += [flat_path, emo_path]
 
-        # 1. Generate FLAT version
-        if os.path.exists(flat_path) and os.path.getsize(flat_path) > 1000:
-            print(f"  -> FLAT already exists, skipping: {flat_path}")
-            generated_files.append((emotion, "FLAT", flat_path))
-        else:
-            # FLAT uses pitch="+0Hz", rate="+0%", rvc_pitch=2, index_rate=0.88, rms_mix=0.20
-            print(f"  -> Generating FLAT version: pitch=+0Hz, rate=+0%, rvc_pitch=2, index_rate=0.88, rms_mix=0.20...")
-            flat_wav = process_sentence(
-                text=text,
-                pitch_str="+0Hz",
-                rate_str="+0%",
-                rvc_pitch=2,
-                index_rate=0.88,
-                rms_mix_rate=0.20,
-                protect=0.50,
-                voice=BASE_VOICE
-            )
-            with open(flat_path, "wb") as f:
-                f.write(flat_wav)
-            print(f"     Saved: {flat_path} ({len(flat_wav):,} bytes)")
-            generated_files.append((emotion, "FLAT", flat_path))
+    # ── Summary ─────────────────────────────────────────────
+    print("\n" + "=" * 68)
+    ok = [p for p in generated if os.path.exists(p) and os.path.getsize(p) > 1000]
+    print(f"  DONE: {len(ok)}/10 WAVs generated")
+    print("=" * 68)
+    for p in ok:
+        print(f"  {os.path.basename(p):55s} {os.path.getsize(p)//1024:>5} KB")
 
-        # 2. Generate EMOTION version
-        emo_cfg = params.get(emotion, params.get("neutral", {}))
-        edge_pitch = emo_cfg.get("edge_pitch_hz", 0)
-        edge_rate = emo_cfg.get("edge_rate_pct", 0)
-        rvc_pitch = emo_cfg.get("rvc_pitch_semitones", 2)
-        idx_rate = emo_cfg.get("index_rate", 0.85)
-        rms_mix = emo_cfg.get("rms_mix_rate", 0.20)
-        protect = emo_cfg.get("protect", 0.50)
-        voice = emo_cfg.get("voice", BASE_VOICE)
+    # ── Copy to artifacts ────────────────────────────────────
+    print("\n[Copying to artifacts...]")
+    import shutil
+    copied = 0
+    for p in ok:
+        dest = os.path.join(ARTIFACT_DIR, os.path.basename(p))
+        try:
+            shutil.copy2(p, dest)
+            copied += 1
+        except Exception as e:
+            print(f"  [WARN] {os.path.basename(p)}: {e}")
+    print(f"[OK] {copied}/{len(ok)} WAVs copied to artifacts")
 
-        pitch_str = f"{edge_pitch:+d}Hz"
-        rate_str = f"{edge_rate:+d}%"
-
-        if os.path.exists(emotion_path) and os.path.getsize(emotion_path) > 1000:
-            print(f"  -> EMOTION already exists, skipping: {emotion_path}")
-            generated_files.append((emotion, "EMOTION", emotion_path))
-        else:
-            print(f"  -> Generating EMOTION version: pitch={pitch_str}, rate={rate_str}, rvc_pitch={rvc_pitch}, index_rate={idx_rate}, rms_mix={rms_mix}...")
-            emotion_wav = process_sentence(
-                text=text,
-                pitch_str=pitch_str,
-                rate_str=rate_str,
-                rvc_pitch=rvc_pitch,
-                index_rate=idx_rate,
-                rms_mix_rate=rms_mix,
-                protect=protect,
-                voice=voice
-            )
-            with open(emotion_path, "wb") as f:
-                f.write(emotion_wav)
-            print(f"     Saved: {emotion_path} ({len(emotion_wav):,} bytes)")
-            generated_files.append((emotion, "EMOTION", emotion_path))
-
-    print("\n================================================================================")
-    print("Experiment Complete! Generated 10 Audio Files with Sample 5 Tone & Depth:")
-    print("================================================================================")
-    for emotion, variant, path in generated_files:
-        norm_path = Path(path).as_posix()
-        uri = f"file:///{norm_path}"
-        print(f" - [{variant:7s}] {emotion:12s}: {uri}")
+    return len(ok)
 
 
 if __name__ == "__main__":
-    main()
+    n = main()
+    sys.exit(0 if n == 10 else 1)
+
