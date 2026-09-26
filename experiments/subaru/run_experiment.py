@@ -121,8 +121,8 @@ def run_rvc_inference(raw_audio_bytes: bytes, pitch_semitones: int,
             "--protect",      str(protect),
             "--overwrite"
         ]
-        target_index = index_path if (index_path and os.path.exists(index_path)) else SUBARU_INDEX
-        if os.path.exists(target_index):
+        target_index = index_path if (index_path and os.path.isfile(index_path)) else SUBARU_INDEX
+        if os.path.isfile(target_index):
             cmd.extend(["--index", target_index])
             print(f"     [RVC] using index: {os.path.basename(target_index)}")
 
@@ -220,9 +220,11 @@ def process_and_save(text: str, cfg: dict, label: str, out_path: str):
 
     # 2. RVC with Emotion-Dedicated Index
     idx_file = cfg.get("index_file", "")
-    idx_path = os.path.join(r"a:\Projects\novel-reader-voice-engine\models\subaru\indices", idx_file)
-    if not os.path.exists(idx_path):
-        idx_path = SUBARU_INDEX
+    idx_path = None
+    if idx_file:
+        candidate = os.path.join(r"a:\Projects\novel-reader-voice-engine\models\subaru\indices", idx_file)
+        if os.path.isfile(candidate):
+            idx_path = candidate
 
     rvc_out = run_rvc_inference(
         raw_audio_bytes=raw_tts,
